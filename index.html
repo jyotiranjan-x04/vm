@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Gesture Virtual Mouse</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+        #video {
+            display: block;
+            margin: 0 auto;
+            width: 640px;
+            height: 480px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hand Gesture Control for Virtual Mouse</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <div id="gesture-info"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.3.1641412259/handtracking.js"></script>
+    <script>
+        const videoElement = document.getElementById("video");
+
+        // Start webcam feed
+        async function startVideo() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoElement.srcObject = stream;
+        }
+
+        // Set up hand tracking model
+        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.3.1641412259/${file}` });
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        // Event listener for video frames
+        videoElement.addEventListener('loadeddata', () => {
+            hands.onResults((results) => {
+                if (results.multiHandLandmarks) {
+                    // Process results from hand landmarks
+                    const landmarks = results.multiHandLandmarks[0];
+                    let fingersUp = [];
+                    // Detect fingers up based on landmarks
+                    for (let i = 0; i < 5; i++) {
+                        // Logic to check which fingers are up based on landmarks
+                        fingersUp.push(landmarks[i].y < landmarks[i + 1].y ? 1 : 0);
+                    }
+                    // Send data to backend
+                    fetch('/api/gesture', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ fingersUp })
+                    });
+                }
+            });
+        });
+
+        // Start video and hand tracking
+        startVideo();
+        videoElement.play();
+    </script>
+</body>
+</html>
